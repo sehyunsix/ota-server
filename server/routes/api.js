@@ -46,14 +46,15 @@ router.post('/imgFile', async (req, res) => {
       );
     }
 
-    // DB에는 파일명만 저장
+    // DB에 파일명과 SHA 해시 저장
     await pool.query(
-      'INSERT INTO img_db (img_url, device_model, is_latest, img_file, img_version) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO img_db (img_url, device_model, is_latest, img_file, img_version, img_sha) VALUES (?, ?, ?, ?, ?, ?)',
       [`/api/imgFile?device_model=${device_model}&req_version=${img_version}`,
        device_model,
        is_latest === 'true' || is_latest === true,
        fileName,
-       img_version]
+       img_version,
+       shaKey]  // SHA-256 해시 값 저장
     );
 
     res.status(201).json({
@@ -238,6 +239,43 @@ router.get('/images', async (req, res) => {
   } catch (error) {
     console.error('Error fetching images:', error);
     res.status(500).json({ error: 'Failed to fetch images' });
+  }
+});
+
+// 새로운 API: SHA 해시로 이미지 검증
+router.get('/verify', async (req, res) => {
+  try {
+    const { device_model, sha } = req.query;
+
+    if (!sha) {
+      return res.status(400).json({ error: 'SHA hash is required' });
+    }
+
+    const pool = await getPool();
+    let query = 'SELECT * FROM img_db WHERE img_sha = ?';
+    const queryParams = [sha];
+
+    if (device_model) {
+      query += ' AND device_model = ?';
+      queryParams.push(device_model);
+    }
+
+    const [rows] = await pool.query(query, queryParams);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        verified: false,
+        error: 'No matching image found with this SHA hash'
+      });
+    }
+
+    res.json({
+      verified: true,
+      image: rows[0]
+    });
+  } catch (error) {
+    console.error('Error verifying image:', error);
+    res.status(500).json({ error: 'Failed to verify image' });
   }
 });
 

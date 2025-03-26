@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const row = document.createElement('tr');
 
       // SHA key가 없는 경우 '-'로 표시
-      const shaKey = image.sha_key || '-';
+      const shaKey = image.img_sha || '-';
 
       row.innerHTML = `
         <td>${image.device_model}</td>

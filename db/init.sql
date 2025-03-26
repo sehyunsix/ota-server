@@ -9,8 +9,10 @@ CREATE TABLE IF NOT EXISTS img_db (
   is_latest BOOLEAN DEFAULT FALSE,
   img_file VARCHAR(255) NOT NULL,
   img_version VARCHAR(50) NOT NULL,
+  img_sha VARCHAR(64) NOT NULL,  -- SHA-256 해시값 저장 필드 추가
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_device_latest (device_model, is_latest)
+  INDEX idx_device_latest (device_model, is_latest),
+  INDEX idx_img_sha (img_sha)  -- SHA 검색을 위한 인덱스 추가
 );
 
 -- 업데이트 상태 테이블 (device_uuid 대신 device_model을 키로 사용)
