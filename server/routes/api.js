@@ -108,6 +108,61 @@ router.get('/imgFile', async (req, res) => {
   }
 });
 
+
+// DELETE /api/imgFile - 이미지 파일 삭제 (SHA 키로 식별)
+router.delete('/imgFile', async (req, res) => {
+  try {
+    const { sha } = req.query;
+
+    if (!sha) {
+      return res.status(400).json({ error: 'SHA hash is required' });
+    }
+
+    const pool = await getPool();
+
+    // 먼저 이미지 정보를 찾습니다
+    const [rows] = await pool.query(
+      'SELECT img_file, device_model, is_latest FROM img_db WHERE img_sha = ?',
+      [sha]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Image file not found with the provided SHA hash' });
+    }
+
+    const { img_file, device_model, is_latest } = rows[0];
+
+    // 파일 시스템에서 파일 삭제
+    const filePath = path.join(uploadDir, img_file);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // 데이터베이스에서 레코드 삭제
+    await pool.query('DELETE FROM img_db WHERE img_sha = ?', [sha]);
+
+    // 삭제된 이미지가 latest였다면 동일 디바이스의 가장 최신 버전을 latest로 설정
+    if (is_latest) {
+      const [latestVersions] = await pool.query(
+        'SELECT id FROM img_db WHERE device_model = ? ORDER BY created_at DESC LIMIT 1',
+        [device_model]
+      );
+
+      if (latestVersions.length > 0) {
+        await pool.query(
+          'UPDATE img_db SET is_latest = TRUE WHERE id = ?',
+          [latestVersions[0].id]
+        );
+      }
+    }
+
+    res.json({ message: 'Image file deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting image file:', error);
+    res.status(500).json({ error: 'Failed to delete image file' });
+  }
+});
+
 // GET /api/imgVersion - 최신 이미지 버전 조회
 router.get('/imgVersion', async (req, res) => {
   try {

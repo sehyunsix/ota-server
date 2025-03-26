@@ -11,6 +11,28 @@ document.addEventListener('DOMContentLoaded', function() {
   const API_BASE_URL = window.API_BASE_URL || '';
 
   // Fetch all OTA images
+
+  // Function to delete an image
+async function deleteImage(sha) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/imgFile?sha=${sha}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to delete image');
+    }
+
+    showUploadStatus('Image deleted successfully', 'success');
+
+    // Refresh the images list
+    fetchImages();
+  } catch (error) {
+    console.error('Error:', error);
+    showUploadStatus('Delete failed: ' + error.message, 'error');
+  }
+}
   async function fetchImages() {
     try {
       loadingImages.style.display = 'block';
@@ -44,56 +66,68 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Display images in the table
-  function displayImages(images) {
-    const selectedDeviceModel = deviceFilter.value;
+ // Display images in the table
+function displayImages(images) {
+  const selectedDeviceModel = deviceFilter.value;
 
-    const filteredImages = selectedDeviceModel
-      ? images.filter(img => img.device_model === selectedDeviceModel)
-      : images;
+  const filteredImages = selectedDeviceModel
+    ? images.filter(img => img.device_model === selectedDeviceModel)
+    : images;
 
-    if (filteredImages.length === 0) {
-      imagesTable.innerHTML = `
-        <tr>
-          <td colspan="5" style="text-align: center;">No images found</td>
-        </tr>
-      `;
-      return;
-    }
-
-    imagesTable.innerHTML = '';
-
-    filteredImages.forEach(image => {
-      const row = document.createElement('tr');
-
-      // SHA key가 없는 경우 '-'로 표시
-      const shaKey = image.img_sha || '-';
-
-      row.innerHTML = `
-        <td>${image.device_model}</td>
-        <td>${image.img_version}</td>
-        <td>${image.is_latest ? '<span class="badge badge-success">Latest</span>' : ''}</td>
-        <td><span class="sha-key" title="${shaKey}">${shaKey}</span></td>
-        <td>
-          <button class="action-btn download-btn"
-                  data-model="${image.device_model}"
-                  data-version="${image.img_version}">Download</button>
-        </td>
-      `;
-
-      imagesTable.appendChild(row);
-    });
-
-    // Add event listeners to download buttons - 새로운 API 형식으로 변경
-    document.querySelectorAll('.download-btn').forEach(button => {
-      button.addEventListener('click', function() {
-        const deviceModel = this.getAttribute('data-model');
-        const imgVersion = this.getAttribute('data-version');
-        // 새로운 다운로드 URL 형식
-        window.location.href = `${API_BASE_URL}/api/imgFile?device_model=${deviceModel}&req_version=${imgVersion}`;
-      });
-    });
+  if (filteredImages.length === 0) {
+    imagesTable.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center;">No images found</td>
+      </tr>
+    `;
+    return;
   }
+
+  imagesTable.innerHTML = '';
+
+  filteredImages.forEach(image => {
+    const row = document.createElement('tr');
+
+    // SHA key가 없는 경우 '-'로 표시
+    const shaKey = image.img_sha || '-';
+
+    row.innerHTML = `
+      <td>${image.device_model}</td>
+      <td>${image.img_version}</td>
+      <td>${image.is_latest ? '<span class="badge badge-success">Latest</span>' : ''}</td>
+      <td><span class="sha-key" title="${shaKey}">${shaKey.substring(0, 10)}...</span></td>
+      <td>
+        <button class="action-btn download-btn"
+                data-model="${image.device_model}"
+                data-version="${image.img_version}">Download</button>
+      </td>
+      <td>
+        <button class="action-btn delete-btn" data-sha="${shaKey}">Delete</button>
+      </td>
+    `;
+
+    imagesTable.appendChild(row);
+  });
+
+  // Add event listeners to download buttons
+  document.querySelectorAll('.download-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const deviceModel = this.getAttribute('data-model');
+      const imgVersion = this.getAttribute('data-version');
+      window.location.href = `${API_BASE_URL}/api/imgFile?device_model=${deviceModel}&req_version=${imgVersion}`;
+    });
+  });
+
+  // Add event listeners to delete buttons
+  document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const sha = this.getAttribute('data-sha');
+      if (confirm('Are you sure you want to delete this image?')) {
+        deleteImage(sha);
+      }
+    });
+  });
+}
 
   // Handle file upload
   uploadForm.addEventListener('submit', async function(e) {

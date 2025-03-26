@@ -192,3 +192,21 @@ table th {
   word-break: break-all;
 
 }
+
+.delete-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+}
+
+.sha-key {
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  max-width: 150px;
+  cursor: help;
+}
