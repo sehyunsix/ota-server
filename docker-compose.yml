@@ -2,7 +2,7 @@ name: ota-server
 
 services:
   app:
-    build: ./server
+    image: sehyunsix/ota-server:latest  # Docker Hub 이미지 사용
     ports:
       - "3000:3000"
     depends_on:
@@ -17,7 +17,7 @@ services:
     restart: always
 
   mysql:
-    build: ./db
+    image: sehyunsix/ota-mysql:latest  # Docker Hub 이미지 사용
     ports:
       - "3306:3306"
     environment:
@@ -28,7 +28,7 @@ services:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: always
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
       interval: 10s
       timeout: 5s
       retries: 5
