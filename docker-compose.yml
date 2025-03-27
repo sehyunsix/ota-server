@@ -4,7 +4,7 @@ services:
   app:
     image: sehyunsix/ota-server:latest  # Docker Hub 이미지 사용
     ports:
-      - "5000:3000"
+      - "3000:3000"
     depends_on:
       - mysql
     environment:

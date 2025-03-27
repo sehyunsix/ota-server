@@ -163,6 +163,65 @@ router.delete('/imgFile', async (req, res) => {
   }
 });
 
+
+// PUT /api/imgFile/latest - 이미지를 최신 버전으로 설정
+router.put('/imgFile/latest', async (req, res) => {
+  try {
+    const { sha, device_model } = req.body;
+
+    if (!sha || !device_model) {
+      return res.status(400).json({ error: 'SHA hash and device model are required' });
+    }
+
+    const pool = await getPool();
+
+    // 먼저 이미지 정보를 찾습니다
+    const [rows] = await pool.query(
+      'SELECT id FROM img_db WHERE img_sha = ?',
+      [sha]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Image file not found with the provided SHA hash' });
+    }
+
+    const imageId = rows[0].id;
+
+    // 트랜잭션 시작
+    await pool.query('START TRANSACTION');
+
+    try {
+      // 1. 해당 디바이스의 모든 이미지를 latest=false로 설정
+      await pool.query(
+        'UPDATE img_db SET is_latest = FALSE WHERE device_model = ?',
+        [device_model]
+      );
+
+      // 2. 선택한 이미지를 latest=true로 설정
+      await pool.query(
+        'UPDATE img_db SET is_latest = TRUE WHERE id = ?',
+        [imageId]
+      );
+
+      // 트랜잭션 커밋
+      await pool.query('COMMIT');
+
+      res.json({
+        message: 'Image successfully set as latest version',
+        device_model,
+        sha
+      });
+    } catch (error) {
+      // 오류 발생 시 롤백
+      await pool.query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error setting image as latest:', error);
+    res.status(500).json({ error: 'Failed to set image as latest version' });
+  }
+});
+
 // GET /api/imgVersion - 최신 이미지 버전 조회
 router.get('/imgVersion', async (req, res) => {
   try {
@@ -355,6 +414,69 @@ router.get('/errors', async (req, res) => {
   } catch (error) {
     console.error('Error fetching error logs:', error);
     res.status(500).json({ error: 'Failed to fetch error logs' });
+  }
+});
+
+
+
+// 추가 API: 업데이트 상태 조회 (관리 UI용)
+router.get('/devices', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [rows] = await pool.query('SELECT * FROM update_status ORDER BY updated_at DESC');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching devices:', error);
+    res.status(500).json({ error: 'Failed to fetch devices' });
+  }
+});
+
+
+
+// 추가 API: 업데이트 상태 조회 (관리 UI용)
+router.get('/devices', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [rows] = await pool.query('SELECT * FROM update_status ORDER BY updated_at DESC');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching devices:', error);
+    res.status(500).json({ error: 'Failed to fetch devices' });
+  }
+});
+
+
+// DELETE /api/updateStatus - 업데이트 상태 삭제
+router.delete('/updateStatus', async (req, res) => {
+  try {
+    const { device_model } = req.query;
+
+    if (!device_model) {
+      return res.status(400).json({ error: 'Device model is required' });
+    }
+
+    const pool = await getPool();
+
+    // 해당 디바이스의 업데이트 상태 레코드 조회
+    const [existingRows] = await pool.query(
+      'SELECT id FROM update_status WHERE device_model = ?',
+      [device_model]
+    );
+
+    if (existingRows.length === 0) {
+      return res.status(404).json({ error: 'Update status not found for the specified device model' });
+    }
+
+    // 업데이트 상태 삭제
+    await pool.query(
+      'DELETE FROM update_status WHERE device_model = ?',
+      [device_model]
+    );
+
+    res.json({ message: 'Update status deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting update status:', error);
+    res.status(500).json({ error: 'Failed to delete update status' });
   }
 });
 

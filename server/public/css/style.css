@@ -210,3 +210,149 @@ table th {
   max-width: 150px;
   cursor: help;
 }
+
+/* Tab navigation */
+.tabs {
+  display: flex;
+  margin: 20px 0 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  cursor: pointer;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-bottom: none;
+  margin-right: 5px;
+  border-radius: 5px 5px 0 0;
+}
+
+.tab-btn.active {
+  background: #fff;
+  border-bottom: 1px solid #fff;
+  margin-bottom: -1px;
+  font-weight: bold;
+}
+
+.tab-content {
+  display: none;
+  padding: 20px 0;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Status badges */
+.status-badge {
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  display: inline-block;
+  width: auto;
+}
+
+.status-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.status-failed {
+  background-color: #dc3545;
+  color: white;
+}
+
+.status-running {
+  background-color: #007bff;
+  color: white;
+}
+
+.status-started {
+  background-color: #ffc107;
+  color: black;
+}
+
+/* Refresh button */
+.refresh-btn {
+  margin-left: 10px;
+  padding: 5px 10px;
+  background: #6c757d;
+  color: white;
+}
+
+.refresh-btn:hover {
+  background: #5a6268;
+}
+
+
+/* Delete update status button */
+.delete-status-btn {
+  background-color: #dc3545;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.delete-status-btn:hover {
+  background-color: #c82333;
+
+}
+
+
+/* Global status message */
+.global-status {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 15px;
+  border-radius: 5px;
+  color: white;
+  font-weight: bold;
+  z-index: 1000;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  max-width: 300px;
+  animation: fadeIn 0.3s, fadeOut 0.3s 4.7s;
+}
+
+.global-status.success {
+  background-color: #28a745;
+}
+
+.global-status.error {
+  background-color: #dc3545;
+}
+
+.global-status.warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+/* Set as Latest button */
+.set-latest-btn {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.set-latest-btn:hover {
+  background-color: #138496;
+}
+
+.set-latest-btn.disabled {
+  background-color: #6c757d;
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+

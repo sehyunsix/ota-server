@@ -4,35 +4,63 @@ document.addEventListener('DOMContentLoaded', function() {
   const uploadProgress = document.getElementById('upload-progress');
   const uploadStatus = document.getElementById('upload-status');
   const imagesTable = document.getElementById('images-table').querySelector('tbody');
+  const statusTable = document.getElementById('status-table').querySelector('tbody');
   const loadingImages = document.getElementById('loading-images');
+  const loadingStatus = document.getElementById('loading-status');
   const deviceFilter = document.getElementById('deviceFilter');
+  const statusDeviceFilter = document.getElementById('statusDeviceFilter');
+  const refreshStatusBtn = document.getElementById('refresh-status');
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
 
   // 기본 API URL 설정 (상대 경로 또는 필요시 절대 경로)
   const API_BASE_URL = window.API_BASE_URL || '';
 
-  // Fetch all OTA images
+  // Tab switching functionality
+  tabButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const tabName = this.getAttribute('data-tab');
+
+      // Make all tabs inactive
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+
+      // Make selected tab active
+      this.classList.add('active');
+      document.getElementById(`${tabName}-tab`).classList.add('active');
+
+      // Load data for the active tab if needed
+      if (tabName === 'status') {
+        fetchUpdateStatus();
+      } else if (tabName === 'images') {
+        fetchImages();
+      }
+    });
+  });
 
   // Function to delete an image
-async function deleteImage(sha) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/imgFile?sha=${sha}`, {
-      method: 'DELETE'
-    });
+  async function deleteImage(sha) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/imgFile?sha=${sha}`, {
+        method: 'DELETE'
+      });
 
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to delete image');
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete image');
+      }
+
+      showUploadStatus('Image deleted successfully', 'success');
+
+      // Refresh the images list
+      fetchImages();
+    } catch (error) {
+      console.error('Error:', error);
+      showUploadStatus('Delete failed: ' + error.message, 'error');
     }
-
-    showUploadStatus('Image deleted successfully', 'success');
-
-    // Refresh the images list
-    fetchImages();
-  } catch (error) {
-    console.error('Error:', error);
-    showUploadStatus('Delete failed: ' + error.message, 'error');
   }
-}
+
+  // Fetch all OTA images
   async function fetchImages() {
     try {
       loadingImages.style.display = 'block';
@@ -66,7 +94,7 @@ async function deleteImage(sha) {
     }
   }
 
- // Display images in the table
+  // Display images in the table
 function displayImages(images) {
   const selectedDeviceModel = deviceFilter.value;
 
@@ -77,7 +105,7 @@ function displayImages(images) {
   if (filteredImages.length === 0) {
     imagesTable.innerHTML = `
       <tr>
-        <td colspan="6" style="text-align: center;">No images found</td>
+        <td colspan="7" style="text-align: center;">No images found</td>
       </tr>
     `;
     return;
@@ -102,6 +130,14 @@ function displayImages(images) {
                 data-version="${image.img_version}">Download</button>
       </td>
       <td>
+        <button class="action-btn set-latest-btn ${image.is_latest ? 'disabled' : ''}"
+                data-sha="${shaKey}"
+                data-model="${image.device_model}"
+                ${image.is_latest ? 'disabled' : ''}>
+          ${image.is_latest ? 'Current Latest' : 'Set as Latest'}
+        </button>
+      </td>
+      <td>
         <button class="action-btn delete-btn" data-sha="${shaKey}">Delete</button>
       </td>
     `;
@@ -118,6 +154,19 @@ function displayImages(images) {
     });
   });
 
+  // Add event listeners to set as latest buttons
+  document.querySelectorAll('.set-latest-btn').forEach(button => {
+    if (!button.disabled) {
+      button.addEventListener('click', function() {
+        const sha = this.getAttribute('data-sha');
+        const deviceModel = this.getAttribute('data-model');
+        if (confirm(`Are you sure you want to set this image as the latest version for ${deviceModel}?`)) {
+          setAsLatest(sha, deviceModel);
+        }
+      });
+    }
+  });
+
   // Add event listeners to delete buttons
   document.querySelectorAll('.delete-btn').forEach(button => {
     button.addEventListener('click', function() {
@@ -128,6 +177,125 @@ function displayImages(images) {
     });
   });
 }
+
+  // Fetch update status for all devices
+  async function fetchUpdateStatus() {
+    try {
+      loadingStatus.style.display = 'block';
+      statusTable.innerHTML = '';
+
+      const response = await fetch(`${API_BASE_URL}/api/devices`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch update status');
+      }
+
+      const statusData = await response.json();
+
+      // Populate device filter dropdown for status tab
+      const deviceModels = [...new Set(statusData.map(status => status.device_model))];
+      statusDeviceFilter.innerHTML = '<option value="">All Devices</option>';
+      deviceModels.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        statusDeviceFilter.appendChild(option);
+      });
+
+      // Display update status
+      displayUpdateStatus(statusData);
+    } catch (error) {
+      console.error('Error:', error);
+      loadingStatus.textContent = 'Error loading update status: ' + error.message;
+    } finally {
+      loadingStatus.style.display = 'none';
+    }
+  }
+
+
+// Function to set an image as the latest version
+async function setAsLatest(sha, deviceModel) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/imgFile/latest`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sha,
+        device_model: deviceModel
+      })
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to set image as latest');
+    }
+
+    showGlobalStatus(`Image successfully set as the latest version for ${deviceModel}`, 'success');
+
+    // Refresh the images list
+    fetchImages();
+  } catch (error) {
+    console.error('Error:', error);
+    showGlobalStatus('Failed to set as latest: ' + error.message, 'error');
+  }
+}
+  // Display update status in the table
+  function displayUpdateStatus(statusData) {
+    const selectedDeviceModel = statusDeviceFilter.value;
+
+    const filteredStatus = selectedDeviceModel
+      ? statusData.filter(status => status.device_model === selectedDeviceModel)
+      : statusData;
+
+    if (filteredStatus.length === 0) {
+      statusTable.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center;">No update status found</td>
+        </tr>
+      `;
+      return;
+    }
+
+    statusTable.innerHTML = '';
+
+    filteredStatus.forEach(status => {
+      const row = document.createElement('tr');
+
+      // Format dates
+      const startedAt = status.started_at ? new Date(status.started_at).toLocaleString() : 'N/A';
+      const finishedAt = status.finished_at ? new Date(status.finished_at).toLocaleString() : 'N/A';
+      const updatedAt = status.updated_at ? new Date(status.updated_at).toLocaleString() : 'N/A';
+
+      // Determine status
+      let statusText = 'Unknown';
+      let statusClass = '';
+
+      if (status.is_finished && status.is_success) {
+        statusText = 'Completed Successfully';
+        statusClass = 'status-success';
+      } else if (status.is_finished && !status.is_success) {
+        statusText = 'Failed';
+        statusClass = 'status-failed';
+      } else if (status.is_running) {
+        statusText = 'In Progress';
+        statusClass = 'status-running';
+      } else if (status.is_started) {
+        statusText = 'Started';
+        statusClass = 'status-started';
+      }
+
+      row.innerHTML = `
+        <td>${status.device_model}</td>
+        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+        <td>${startedAt}</td>
+        <td>${finishedAt}</td>
+        <td>${updatedAt}</td>
+      `;
+
+      statusTable.appendChild(row);
+    });
+  }
 
   // Handle file upload
   uploadForm.addEventListener('submit', async function(e) {
@@ -213,22 +381,150 @@ function displayImages(images) {
     }
   });
 
-  // Display upload status
-  function showUploadStatus(message, type) {
-    uploadStatus.textContent = message;
-    uploadStatus.className = type;
-    uploadStatus.style.display = 'block';
+function displayUpdateStatus(statusData) {
+  const selectedDeviceModel = statusDeviceFilter.value;
 
-    setTimeout(() => {
-      uploadStatus.style.display = 'none';
-    }, 5000);
+  const filteredStatus = selectedDeviceModel
+    ? statusData.filter(status => status.device_model === selectedDeviceModel)
+    : statusData;
+
+  if (filteredStatus.length === 0) {
+    statusTable.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center;">No update status found</td>
+      </tr>
+    `;
+    return;
   }
 
-  // Filter images by device model
-  deviceFilter.addEventListener('change', function() {
-    fetchImages();
+  statusTable.innerHTML = '';
+
+  filteredStatus.forEach(status => {
+    const row = document.createElement('tr');
+
+    // Format dates
+    const startedAt = status.started_at ? new Date(status.started_at).toLocaleString() : 'N/A';
+    const finishedAt = status.finished_at ? new Date(status.finished_at).toLocaleString() : 'N/A';
+    const updatedAt = status.updated_at ? new Date(status.updated_at).toLocaleString() : 'N/A';
+
+    // Determine status
+    let statusText = 'Unknown';
+    let statusClass = '';
+
+    if (status.is_finished && status.is_success) {
+      statusText = 'Completed Successfully';
+      statusClass = 'status-success';
+    } else if (status.is_finished && !status.is_success) {
+      statusText = 'Failed';
+      statusClass = 'status-failed';
+    } else if (status.is_running) {
+      statusText = 'In Progress';
+      statusClass = 'status-running';
+    } else if (status.is_started) {
+      statusText = 'Started';
+      statusClass = 'status-started';
+    }
+
+    row.innerHTML = `
+      <td>${status.device_model}</td>
+      <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+      <td>${startedAt}</td>
+      <td>${finishedAt}</td>
+      <td>${updatedAt}</td>
+      <td>
+        <button class="action-btn delete-status-btn" data-device="${status.device_model}">Delete</button>
+      </td>
+    `;
+
+    statusTable.appendChild(row);
   });
 
+  // Add event listeners to delete buttons
+  document.querySelectorAll('.delete-status-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const deviceModel = this.getAttribute('data-device');
+      if (confirm(`Are you sure you want to delete the update status for device ${deviceModel}?`)) {
+        deleteUpdateStatus(deviceModel);
+      }
+    });
+  });
+}
+
+// Function to delete an update status
+async function deleteUpdateStatus(deviceModel) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/updateStatus?device_model=${deviceModel}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to delete update status');
+    }
+
+    showUploadStatus('Update status deleted successfully', 'success');
+
+    // Refresh the update status list
+    fetchUpdateStatus();
+  } catch (error) {
+    console.error('Error:', error);
+    showUploadStatus('Delete failed: ' + error.message, 'error');
+  }
+}
+// 공통 상태 메시지 표시 함수
+function showGlobalStatus(message, type) {
+  // 기존 메시지 제거
+  const existingStatus = document.querySelector('.global-status');
+  if (existingStatus) {
+    existingStatus.remove();
+  }
+
+  const statusDiv = document.createElement('div');
+  statusDiv.className = `global-status ${type}`;
+  statusDiv.textContent = message;
+  document.body.appendChild(statusDiv);
+
+  // 5초 후 자동으로 사라짐
+  setTimeout(() => {
+    statusDiv.remove();
+  }, 5000);
+}
+
+  // Display upload status
+function showUploadStatus(message, type) {
+  uploadStatus.textContent = message;
+  uploadStatus.className = type;
+  uploadStatus.style.display = 'block';
+
+  // 공통 상태 메시지도 표시
+  showGlobalStatus(message, type);
+
+  setTimeout(() => {
+    uploadStatus.style.display = 'none';
+  }, 5000);
+}
+
+  // 삭제 함수에서는 showGlobalStatus 직접 호출
+  async function deleteUpdateStatus(deviceModel) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/updateStatus?device_model=${deviceModel}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete update status');
+      }
+
+      showGlobalStatus('Update status deleted successfully', 'success');
+
+      // Refresh the update status list
+      fetchUpdateStatus();
+    } catch (error) {
+      console.error('Error:', error);
+      showGlobalStatus('Delete failed: ' + error.message, 'error');
+    }
+  }
   // Initial load
   fetchImages();
 });

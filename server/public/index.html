@@ -48,7 +48,14 @@
       <div id="upload-status"></div>
     </section>
 
-    <section class="images-section">
+    <!-- Tab Navigation -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="images">OTA Images</button>
+      <button class="tab-btn" data-tab="status">Update Status</button>
+    </div>
+
+    <!-- Images Tab -->
+    <section class="tab-content active" id="images-tab">
       <h2>Available OTA Images</h2>
       <div class="filter-container">
         <label for="deviceFilter">Filter by Device Model:</label>
@@ -59,19 +66,47 @@
       <table id="images-table">
         <thead>
           <tr>
-            <th>Device Model</th>
-            <th>Version</th>
-            <th>Status</th>
-            <th>SHA Key</th>
-           <th>Download</th>
-            <th>Delete</th>
-          </tr>
+               <th>Device Model</th>
+              <th>Version</th>
+              <th>Status</th>
+              <th>SHA Key</th>
+              <th>Download</th>
+              <th>Set Latest</th>
+              <th>Delete</th>
         </thead>
         <tbody>
           <!-- Images will be loaded here -->
         </tbody>
       </table>
       <div id="loading-images" class="loading">Loading...</div>
+    </section>
+
+    <!-- Update Status Tab -->
+    <section class="tab-content" id="status-tab">
+      <h2>Device Update Status</h2>
+      <div class="filter-container">
+        <label for="statusDeviceFilter">Filter by Device Model:</label>
+        <select id="statusDeviceFilter">
+          <option value="">All Devices</option>
+        </select>
+        <button id="refresh-status" class="btn refresh-btn">Refresh</button>
+      </div>
+      <table id="status-table">
+        <thead>
+          <tr>
+            <th>Device Model</th>
+            <th>Status</th>
+            <th>Started At</th>
+            <th>Finished At</th>
+            <th>Last Updated</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Update status will be loaded here -->
+        </tbody>
+      </table>
+      <div id="loading-status" class="loading">Loading...</div>
     </section>
   </div>
 
