@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const { getPool } = require('../db');
 
 // 업로드 디렉터리 설정
-const uploadDir = path.join(__dirname, '../../uploads');
+const uploadDir ='/app/uploads';
 
 // API 구현
 router.post('/imgFile', async (req, res) => {
